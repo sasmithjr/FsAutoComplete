@@ -23,3 +23,29 @@ type FSharpSymbol with
         | :? FSharpUnionCase as m -> not m.Accessibility.IsPublic
         | :? FSharpField as m -> not m.Accessibility.IsPublic
         | _ -> false
+
+type FSharpSymbolUse with
+    member this.IsPrivateToFile =
+        let isPrivate =
+            match this.Symbol with
+            | :? FSharpMemberOrFunctionOrValue as m -> not m.IsModuleValueOrMember || m.Accessibility.IsPrivate
+            | :? FSharpEntity as m -> m.Accessibility.IsPrivate
+            | :? FSharpGenericParameter -> true
+            | :? FSharpUnionCase as m -> m.Accessibility.IsPrivate
+            | :? FSharpField as m -> m.Accessibility.IsPrivate
+            | _ -> false
+
+        let declarationLocation =
+            match this.Symbol.SignatureLocation with
+            | Some x -> Some x
+            | _ ->
+                match this.Symbol.DeclarationLocation with
+                | Some x -> Some x
+                | _ -> this.Symbol.ImplementationLocation
+
+        let declaredInTheFile =
+            match declarationLocation with
+            | Some declRange -> declRange.FileName = this.RangeAlternate.FileName
+            | _ -> false
+
+        isPrivate && declaredInTheFile
